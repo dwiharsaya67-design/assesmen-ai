@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASESE_AI - Real AI Question Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <!-- MathJax Configuration -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f3f4f6; }
+        .gold-gradient { background: linear-gradient(135deg, #D4AF37 0%, #F9E79F 50%, #B8860B 100%); }
+        
+        /* Kontainer Utama Kertas A4 */
+        .a4-container {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: auto;
+            background: white;
+            color: black;
+            position: relative;
+            line-height: 1.6;
+            border: 1px solid #ddd;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .watermark {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 60px; font-weight: bold;
+            color: rgba(0, 0, 0, 0.03);
+            pointer-events: none; white-space: nowrap; z-index: 0;
+            text-transform: uppercase;
+        }
+
+        .q-wrapper { display: grid; grid-template-columns: 28px 1fr; gap: 8px; margin-bottom: 24px; page-break-inside: avoid; }
+        .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin-top: 10px; }
+        .option-item { display: grid; grid-template-columns: 24px 1fr; gap: 4px; align-items: start; }
+        .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; text-align: center; font-size: 13px; }
+        
+        .q-image {
+            max-width: 250px;
+            max-height: 180px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            object-fit: contain;
+            background: #f9f9f9;
+        }
+
+        .img-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 8px;
+            background: #f3f4f6;
+            padding: 4px 12px;
+            border-radius: 99px;
+            width: fit-content;
+        }
+
+        /* Responsivitas Layar */
+        @media (max-width: 210mm) {
+            .a4-container {
+                width: 95vw;
+                padding: 10mm;
+                min-height: auto;
+            }
+            .option-grid { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+            nav, .no-print, .img-control { display: none !important; }
+            body { background: white; padding: 0; }
+            .a4-container { border: none; box-shadow: none; margin: 0; padding: 10mm; width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-200 no-print">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="p-2 gold-gradient rounded-lg"><i data-lucide="brain-circuit" class="text-black"></i></div>
+                <h1 class="font-bold text-lg">ASESE_AI <span class="text-yellow-600">v2.9</span></h1>
+            </div>
+            <div class="hidden md:block">
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-widest">Dwi Harsaya • Google Apps Script Ready</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- Panel Pengaturan -->
+            <div class="lg:col-span-4 no-print">
+                <div class="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 sticky top-24">
+                    <h3 class="text-lg font-bold mb-5 flex items-center gap-2">
+                        <i data-lucide="settings" class="text-yellow-600"></i> Konfigurasi Asesmen
+                    </h3>
+
+                    <div class="space-y-4">
+                        <div class="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase">Identitas Sekolah & Lokasi</p>
+                            <div>
+                                <label class="text-xs font-semibold">Nama Sekolah</label>
+                                <input type="text" id="schoolName" placeholder="Contoh: SD Negeri Cerdas" class="w-full p-2.5 mt-1 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold">Kota / Lokasi Penulisan</label>
+                                <input type="text" id="locationName" placeholder="Contoh: Semarang" class="w-full p-2.5 mt-1 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold">Alamat Sekolah</label>
+                                <input type="text" id="schoolAddress" placeholder="Jl. Pendidikan No. 1" class="w-full p-2.5 mt-1 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-yellow-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-semibold">Logo Sekolah</label>
+                                <input type="file" id="logoUpload" accept="image/*" class="w-full text-xs mt-1 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-yellow-50 file:text-yellow-700 hover:file:bg-yellow-100">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-gray-400">JENJANG</label>
+                                <select id="level" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm">
+                                    <option value="SD">SD</option>
+                                    <option value="SMP">SMP</option>
+                                    <option value="SMA">SMA</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-400">KELAS</label>
+                                <input type="number" id="grade" value="5" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-gray-400">MATA PELAJARAN</label>
+                            <input type="text" id="subject" placeholder="IPA / Matematika" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm">
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-gray-400">TOPIK SPESIFIK</label>
+                            <textarea id="topics" rows="2" placeholder="Contoh: Sistem Tata Surya" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm"></textarea>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-gray-400">BENTUK SOAL</label>
+                                <select id="qType" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm">
+                                    <option value="Pilihan Ganda">Pilihan Ganda</option>
+                                    <option value="Isian Singkat">Isian Singkat</option>
+                                    <option value="Uraian">Uraian</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-400">JUMLAH</label>
+                                <input type="number" id="qCount" min="1" max="15" value="5" class="w-full p-2.5 rounded-xl border border-gray-200 text-sm">
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-yellow-50 rounded-2xl border border-yellow-100">
+                            <div class="flex items-center gap-2">
+                                <input type="checkbox" id="includeImages" class="w-4 h-4 text-yellow-600 accent-yellow-600">
+                                <label for="includeImages" class="text-xs font-bold text-yellow-800">Sertakan ilustrasi AI</label>
+                            </div>
+                        </div>
+
+                        <button onclick="generateWithAI()" id="btnGenerate" class="w-full py-4 mt-2 rounded-2xl gold-gradient text-black font-black text-lg shadow-lg hover:shadow-yellow-200/50 transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <i data-lucide="wand-2"></i> GENERATE SOAL
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Area Preview -->
+            <div class="lg:col-span-8">
+                <div id="loader" class="hidden bg-white rounded-3xl p-16 text-center shadow-xl mb-6 border border-yellow-100">
+                    <div class="animate-spin w-14 h-14 border-4 border-yellow-600 border-t-transparent rounded-full mx-auto mb-6"></div>
+                    <p class="text-xl font-bold text-gray-800">AI sedang merancang soal...</p>
+                </div>
+
+                <div id="resultArea" class="hidden space-y-6">
+                    <div class="flex gap-3 no-print">
+                        <button onclick="downloadPDF()" class="bg-red-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-red-700 shadow-md transition-all">
+                            <i data-lucide="file-text"></i> Ekspor PDF
+                        </button>
+                        <button onclick="window.print()" class="bg-zinc-800 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-black shadow-md transition-all">
+                            <i data-lucide="printer"></i> Cetak
+                        </button>
+                    </div>
+
+                    <div id="pdfContent" class="a4-container">
+                        <div class="watermark" id="watermarkText">SEKOLAH</div>
+                        
+                        <!-- Kop Surat -->
+                        <div class="border-b-4 border-double border-black pb-4 mb-6 flex items-center gap-6 relative z-10">
+                            <img id="schoolLogoPreview" src="https://via.placeholder.com/80?text=LOGO" alt="Logo" class="w-20 h-20 object-contain">
+                            <div class="flex-1 text-center">
+                                <h2 class="text-sm font-bold uppercase tracking-tight">PEMERINTAH KABUPATEN / KOTA</h2>
+                                <h2 class="text-sm font-bold uppercase leading-tight">DINAS PENDIDIKAN DAN KEBUDAYAAN</h2>
+                                <h3 class="text-xl font-black uppercase mt-1" id="headerName">NAMA SEKOLAH</h3>
+                                <p class="text-[11px] italic mt-1" id="headerAddress">Alamat: Belum diatur</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-x-10 gap-y-1 text-xs font-bold mb-6 border-2 border-black p-4 relative z-10">
+                            <div class="flex justify-between"><span>Mata Pelajaran</span><span>:</span></div>
+                            <div id="outSubject" class="font-black">-</div>
+                            <div class="flex justify-between"><span>Kelas / Jenjang</span><span>:</span></div>
+                            <div id="outClass">-</div>
+                            <div class="flex justify-between"><span>Topik Materi</span><span>:</span></div>
+                            <div id="outTopic">-</div>
+                            <div class="flex justify-between"><span>Tipe / Waktu</span><span>:</span></div>
+                            <div id="outTypeInfo">-</div>
+                        </div>
+
+                        <div id="soalContainer" class="relative z-10 text-[14px] space-y-4"></div>
+
+                        <!-- Tanda Tangan -->
+                        <div class="signature-grid relative z-10">
+                            <div>
+                                <p>Mengetahui,</p>
+                                <p class="mb-20">Kepala Sekolah</p>
+                                <p class="font-bold underline">( ....................................... )</p>
+                            </div>
+                            <div>
+                                <p id="currentPlaceDate">Lokasi, Tanggal</p>
+                                <p class="mb-20">Guru Mata Pelajaran</p>
+                                <p class="font-bold underline">( Dwi Harsaya )</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="keyArea" class="hidden no-print">
+                         <div id="keyContent" class="a4-container mt-8 shadow-xl">
+                            <h2 class="text-lg font-bold border-b-2 border-black pb-2 mb-4 uppercase">KUNCI JAWABAN & SKOR</h2>
+                            <div id="keyContainer" class="grid grid-cols-1 gap-3 text-sm"></div>
+                        </div>
+                    </div>
+
+                    <div class="text-center no-print pb-10">
+                        <button onclick="toggleKeys()" id="btnKey" class="text-yellow-700 font-bold hover:bg-yellow-100 py-3 px-6 rounded-xl bg-yellow-50 border border-yellow-200 transition-all">Tampilkan Kunci Jawaban</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+        const apiKey = ""; // Disediakan oleh environment
+
+        // Preview Logo
+        document.getElementById('logoUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => document.getElementById('schoolLogoPreview').src = event.target.result;
+                reader.readAsDataURL(file);
+            }
+        });
+
+        async function generateImage(prompt) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        instances: [{ prompt: `Minimalist educational line art illustration, black and white, professional, about: ${prompt}` }],
+                        parameters: { sampleCount: 1 }
+                    })
+                });
+                const result = await response.json();
+                return result.predictions?.[0]?.bytesBase64Encoded ? `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}` : null;
+            } catch (e) { return null; }
+        }
+
+        async function generateWithAI() {
+            const school = document.getElementById('schoolName').value;
+            const location = document.getElementById('locationName').value || "Jakarta";
+            const subject = document.getElementById('subject').value;
+            const topics = document.getElementById('topics').value;
+            const count = document.getElementById('qCount').value;
+            const type = document.getElementById('qType').value;
+            const allImages = document.getElementById('includeImages').checked;
+
+            if (!school || !subject || !topics) {
+                alert("Mohon isi minimal Nama Sekolah, Mata Pelajaran, dan Topik.");
+                return;
+            }
+
+            document.getElementById('loader').classList.remove('hidden');
+            document.getElementById('resultArea').classList.add('hidden');
+            document.getElementById('btnGenerate').disabled = true;
+
+            const prompt = `Buat soal ${type} untuk ${document.getElementById('level').value} kelas ${document.getElementById('grade').value} tentang ${topics}. Mata Pelajaran: ${subject}. Jumlah: ${count}. Output JSON: { "soal": [ { "pertanyaan": "...", "pilihan": ["A", "B", "C", "D"], "kunci": "...", "imagePrompt": "..." } ] }. Gunakan LaTeX untuk matematika.`;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { responseMimeType: "application/json" }
+                    })
+                });
+
+                const data = await response.json();
+                const rawJson = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+                const soalArray = Array.isArray(rawJson) ? rawJson : (rawJson.soal || []);
+                
+                window.lastGeneratedSoal = soalArray;
+
+                if (allImages) {
+                    for (let s of soalArray) {
+                        s.imageUrl = await generateImage(s.imagePrompt || s.pertanyaan);
+                    }
+                }
+
+                renderData(soalArray, { 
+                    school, location, subject, topics, type,
+                    address: document.getElementById('schoolAddress').value,
+                    level: document.getElementById('level').value,
+                    grade: document.getElementById('grade').value
+                });
+            } catch (err) {
+                console.error(err);
+                alert("Terjadi gangguan koneksi ke AI.");
+            } finally {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('btnGenerate').disabled = false;
+            }
+        }
+
+        function renderData(soalArray, meta) {
+            document.getElementById('resultArea').classList.remove('hidden');
+            document.getElementById('headerName').innerText = meta.school;
+            document.getElementById('headerAddress').innerText = "Alamat: " + (meta.address || "Belum diatur");
+            document.getElementById('watermarkText').innerText = meta.school;
+            document.getElementById('outSubject').innerText = meta.subject;
+            document.getElementById('outClass').innerText = meta.grade + " / " + meta.level;
+            document.getElementById('outTopic').innerText = meta.topics;
+            document.getElementById('outTypeInfo').innerText = meta.type + " / 90 Menit";
+
+            const dateStr = new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('currentPlaceDate').innerText = `${meta.location}, ${dateStr}`;
+
+            const container = document.getElementById('soalContainer');
+            const keyContainer = document.getElementById('keyContainer');
+            container.innerHTML = '';
+            keyContainer.innerHTML = '';
+
+            soalArray.forEach((item, index) => {
+                const i = index + 1;
+                const wrapper = document.createElement('div');
+                wrapper.className = "q-wrapper";
+                
+                let contentHtml = `<p class="font-medium">${item.pertanyaan}</p>`;
+                if (item.imageUrl) contentHtml += `<img src="${item.imageUrl}" class="q-image" alt="Visual Soal">`;
+                
+                if (meta.type === "Pilihan Ganda" && item.pilihan) {
+                    const ops = item.pilihan.map(p => p.toString().replace(/^[A-D][.\s)-]*/, '').trim());
+                    contentHtml += `
+                        <div class="option-grid">
+                            <div class="option-item"><span>A.</span> <span>${ops[0] || ''}</span></div>
+                            <div class="option-item"><span>B.</span> <span>${ops[1] || ''}</span></div>
+                            <div class="option-item"><span>C.</span> <span>${ops[2] || ''}</span></div>
+                            <div class="option-item"><span>D.</span> <span>${ops[3] || ''}</span></div>
+                        </div>
+                    `;
+                } else {
+                    contentHtml += `<div class="mt-3 border-b border-black border-dotted w-full h-10"></div>`;
+                }
+
+                wrapper.innerHTML = `<div class="font-bold">${i}.</div><div>${contentHtml}</div>`;
+                container.appendChild(wrapper);
+
+                const keyRow = document.createElement('div');
+                keyRow.className = "p-2 border-b border-gray-100 flex gap-4";
+                keyRow.innerHTML = `<span class="font-bold">${i}.</span> <span class="flex-1">${item.kunci}</span>`;
+                keyContainer.appendChild(keyRow);
+            });
+
+            if (window.MathJax) MathJax.typesetPromise();
+            confetti({ particleCount: 150, spread: 60, origin: { y: 0.8 } });
+            lucide.createIcons();
+        }
+
+        function toggleKeys() {
+            const area = document.getElementById('keyArea');
+            area.classList.toggle('hidden');
+            document.getElementById('btnKey').innerText = area.classList.contains('hidden') ? "Tampilkan Kunci Jawaban" : "Sembunyikan Kunci Jawaban";
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('pdfContent');
+            html2pdf().set({
+                margin: 0,
+                filename: `Soal_${document.getElementById('subject').value}.pdf`,
+                html2canvas: { scale: 3, useCORS: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            }).from(element).save();
+        }
+    </script>
+</body>
+</html>
